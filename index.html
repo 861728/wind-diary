@@ -216,9 +216,17 @@
                     body: JSON.stringify({ contents: [{ role: "user", parts }] }) 
                 });
                 
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
-                const result = await response.json();
+                const text = await response.text();
+
+                if (!response.ok) {
+                  console.log(text);
+                  throw new Error(`API Error: ${response.status}`);
+                }
+                
+                const result = JSON.parse(text);
+                
                 return result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+                const result = await response.json();
             };
 
             const handlePasteKey = async () => {
@@ -460,4 +468,5 @@
     </script>
 </body>
 </html>
+
 
