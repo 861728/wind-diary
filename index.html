@@ -89,7 +89,7 @@
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.95);
             backdrop-filter: blur(10px);
             z-index: 9999;
             display: flex;
@@ -104,7 +104,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 120px;
+            height: 110px;
             background: white;
             z-index: 40;
         }
@@ -122,7 +122,7 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // --- Configuration ---
-        const systemApiKey = ""; 
+        const apiKey = ""; 
         const modelName = "gemini-2.5-flash-preview-09-2025";
 
         // --- Constants ---
@@ -150,7 +150,7 @@
             const iconMap = {
                 database: { code: "1f4d1", char: "📑" }, wine: { code: "1f377", char: "🍷" },
                 home: { code: "1f3e0", char: "🏠" }, archive: { code: "1f4da", char: "📚" },
-                add: { code: "1f4dd", char: "📝" }, book: { code: "1f4d6", char: "📖" },
+                add: { code: "270f", char: "📝" }, book: { code: "1f4d6", char: "📖" },
                 history: { code: "1f552", char: "🕒" }, camera: { code: "1f4f8", char: "📸" },
                 search: { code: "1f50d", char: "🔍" }, star: { code: "2b50", char: "⭐" },
                 edit: { code: "270f", char: "✏️" }, delete: { code: "1f5d1", char: "🗑️" },
@@ -187,16 +187,16 @@
             const backupFileRef = useRef(null);
             const fileInputRef = useRef(null);
 
-            const activeKey = systemApiKey || userApiKey;
+            const activeKey = apiKey || userApiKey;
 
             useEffect(() => {
-                const localData = localStorage.getItem('WINE_DIARY_STORAGE_V12');
+                const localData = localStorage.getItem('WINE_DIARY_STORAGE_FINAL_MASTER_V13');
                 if (localData) { try { setWines(JSON.parse(localData)); } catch (e) {} }
                 setIsLoading(false);
             }, []);
 
             useEffect(() => {
-                if (!isLoading) localStorage.setItem('WINE_DIARY_STORAGE_V12', JSON.stringify(wines));
+                if (!isLoading) localStorage.setItem('WINE_DIARY_STORAGE_FINAL_MASTER_V13', JSON.stringify(wines));
             }, [wines, isLoading]);
 
             const fetchGemini = async (prompt, isImage = false, base64 = null) => {
@@ -226,7 +226,7 @@
                     const text = await navigator.clipboard.readText();
                     setTempKey(text);
                 } catch (err) {
-                    alert("Browser policy blocks clipboard access. Please long-press inside the input box to paste manually.");
+                    alert("Please long-press the box to paste manually due to browser security policy.");
                 }
             };
 
@@ -263,7 +263,7 @@
             const handleScan = async (base64) => {
                 setIsScanning(true);
                 try {
-                    const prompt = "Identify wine label. Provide JSON only: {name, producer, vintage, variety, region}. English only.";
+                    const prompt = "Analyze this wine label. Return JSON only: {name, producer, vintage, variety, region}. Use English.";
                     const jsonText = await fetchGemini(prompt, true, base64);
                     const data = JSON.parse(jsonText.match(/\{[\s\S]*\}/)[0]);
                     
@@ -273,7 +273,7 @@
                         imageUrl: base64 
                     }));
                 } catch (e) { 
-                    alert("Scan failed. Ensure you have a stable connection."); 
+                    alert("Scan failed. Ensure API key is valid and image is clear."); 
                 } finally { setIsScanning(false); }
             };
 
@@ -299,7 +299,7 @@
                                 </div>
                                 <div className="space-y-3">
                                     <input className="notion-input" type="text" placeholder="Enter key here..." value={tempKey} onChange={(e) => setTempKey(e.target.value)} />
-                                    <button onClick={handlePasteKey} className="w-full py-3 bg-stone-50 text-stone-500 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                                    <button onClick={handlePasteKey} className="w-full py-3 bg-blue-50 text-[#2383E2] rounded-xl font-bold text-xs flex items-center justify-center gap-2">
                                         Paste from Clipboard
                                     </button>
                                 </div>
@@ -322,7 +322,7 @@
                                     <div className="p-6 notion-block flex items-center justify-between shadow-sm">
                                         <div className="flex items-center gap-5 text-left">
                                             <div className="w-14 h-14 bg-stone-50 rounded-xl flex items-center justify-center shadow-inner"><Icon3D name="wine" size={40} /></div>
-                                            <div><p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Cellar Size</p><p className="text-3xl font-bold text-[#37352F]">{wines.length}</p></div>
+                                            <div><p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Cellar Size</p><p className="text-3xl font-bold text-[#37352F] text-left">{wines.length}</p></div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -365,7 +365,7 @@
                         {/* --- DETAIL VIEW --- */}
                         {view === 'detail' && currentWine && (
                             <div className="space-y-10 animate-in fade-in pb-10 text-left">
-                                <header className="flex justify-between items-center px-1"><button onClick={() => setView('list')} className="text-xs font-bold text-[#2383E2] flex items-center gap-3 uppercase tracking-widest hover:underline"><Icon3D name="arrowLeft" size={16} /> Index</button><div className="flex gap-6"><div className="cursor-pointer" onClick={() => setView('edit')}><Icon3D name="edit" size={28} /></div><div className="cursor-pointer" onClick={() => { if(confirm('Delete?')) { setWines(wines.filter(w => w.id !== currentWine.id)); setView('list'); } }}><Icon3D name="delete" size={28} /></div></div></header>
+                                <header className="flex justify-between items-center px-1"><button onClick={() => setView('list')} className="text-xs font-bold text-[#2383E2] flex items-center gap-3 uppercase tracking-widest hover:underline">Index</button><div className="flex gap-6"><div className="cursor-pointer" onClick={() => setView('edit')}><Icon3D name="edit" size={28} /></div><div className="cursor-pointer" onClick={() => { if(confirm('Delete?')) { setWines(wines.filter(w => w.id !== currentWine.id)); setView('list'); } }}><Icon3D name="delete" size={28} /></div></div></header>
                                 <div className="space-y-12">
                                     <div className="w-full aspect-square bg-stone-50 rounded-3xl overflow-hidden border border-stone-100 shadow-sm">{currentWine.imageUrl ? <img src={currentWine.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-stone-50"><Icon3D name="wine" size={100} /></div>}</div>
                                     <div className="space-y-2 px-1 text-left">
@@ -374,7 +374,7 @@
                                         <p className="text-lg text-stone-400 font-medium">{currentWine.producer || 'Unknown'}</p>
                                     </div>
 
-                                    {/* ✨ 와인 데이터 표시부 (RESTORED) */}
+                                    {/* ✨ 테이스팅 정보 표시부 */}
                                     <div className="border-y border-stone-100 divide-y divide-stone-100 px-1 text-left">
                                         {[ { label: 'Date', icon: 'calendar', value: currentWine.date }, { label: 'Region', icon: 'location', value: currentWine.region || '-' } ].map((item, idx) => (
                                             <div key={idx} className="flex items-center py-5"><div className="w-36 text-[11px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-3"><Icon3D name={item.icon} size={22} /> {item.label}</div><div className={`flex-1 text-sm font-semibold text-[#37352F]`}>{item.value}</div></div>
@@ -383,7 +383,7 @@
                                         <div className="py-5 text-left"><div className="text-[11px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-3 mb-4 text-left"><Icon3D name="tongue" size={22} /> Structure</div><div className="grid grid-cols-2 gap-x-8 gap-y-4 text-left">{STRUCTURE_CONFIG.map(s => (<div key={s.id} className="flex justify-between items-center text-[13px] text-left"><span className="text-stone-400 font-bold uppercase tracking-tighter">{s.label}</span><span className="font-bold text-[#37352F]">{s.levels[currentWine.structure?.[s.id] || 0]}</span></div>))}</div></div>
                                     </div>
 
-                                    <div className="p-8 bg-[#F7F7F5] rounded-3xl border border-stone-100 relative overflow-hidden text-left"><div className="absolute -top-4 -right-4 opacity-10"><Icon3D name="quote" size={100} /></div><p className="text-lg leading-relaxed text-stone-700 font-medium italic relative z-10 text-left">"{currentWine.comment || 'No notes.'}"</p></div>
+                                    <div className="p-8 bg-[#F7F7F5] rounded-3xl border border-stone-100 relative overflow-hidden text-left"><div className="absolute -top-4 -right-4 opacity-10"><Icon3D name="quote" size={100} /></div><p className="text-lg leading-relaxed text-stone-700 font-medium italic relative z-10 text-left">"{currentWine.comment || 'No tasting notes recorded.'}"</p></div>
                                 </div>
                             </div>
                         )}
@@ -399,13 +399,13 @@
                                     </div>
                                     <div className="space-y-6">
                                         <div className="space-y-2 text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 text-left">Wine Name</label><input className="notion-input font-bold text-lg text-[#37352F]" value={currentWine.name} onChange={e => setCurrentWine({...currentWine, name: e.target.value})} placeholder="Title..." /></div>
-                                        <div className="grid grid-cols-2 gap-4 text-left text-left">
+                                        <div className="grid grid-cols-2 gap-4 text-left">
                                             <div className="space-y-2 text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 text-left">Year</label><input className="notion-input" value={currentWine.vintage} onChange={e => setCurrentWine({...currentWine, vintage: e.target.value})} placeholder="Vintage" /></div>
                                             <div className="space-y-2 text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 text-left">Grape</label><input className="notion-input" value={currentWine.variety} onChange={e => setCurrentWine({...currentWine, variety: e.target.value})} placeholder="Grape" /></div>
                                         </div>
                                     </div>
                                     
-                                    {/* ✨ 테이스팅 입력부 (RESTORED) */}
+                                    {/* ✨ 테이스팅 입력부 */}
                                     <div className="space-y-6 pt-4 border-t border-stone-100 text-left">
                                         <div className="flex justify-between items-end text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Type & Color</label><select className="text-[11px] font-bold text-stone-400 bg-transparent outline-none" value={currentWine.type} onChange={e => setCurrentWine({...currentWine, type: e.target.value, color: ''})}>{WINE_TYPES.map(t => <option key={t} value={t}>{t} Wine</option>)}</select></div>
                                         <div className="flex flex-wrap gap-2 text-left">{COLOR_MAP[currentWine.type].map(c => (<button key={c} onClick={() => setCurrentWine({...currentWine, color: c})} className={`px-4 py-2 rounded-full text-xs font-bold border transition-all ${currentWine.color === c ? 'bg-[#37352F] text-white border-[#37352F]' : 'bg-white text-stone-400 border-stone-100'}`}>{c}</button>))}</div>
@@ -419,12 +419,12 @@
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="space-y-8 pt-4 border-t border-stone-100 text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 text-left">Palate & Structure</label>{STRUCTURE_CONFIG.map(s => (<div key={s.id} className="space-y-2 text-left text-left"><div className="flex justify-between text-[10px] font-bold"><span className="text-stone-400 uppercase">{s.label}</span><span className="text-[#2383E2]">{s.levels[currentWine.structure?.[s.id] || 0]}</span></div><div className="flex gap-1 bg-stone-50 p-1 rounded-xl text-left">{s.levels.map((level, idx) => (<button key={level} onClick={() => setCurrentWine({...currentWine, structure: {...currentWine.structure, [s.id]: idx}})} className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${currentWine.structure?.[s.id] === idx ? 'bg-white text-[#37352F] shadow-sm' : 'text-stone-300'}`}>{idx + 1}</button>))}</div></div>))}</div>
+                                    <div className="space-y-8 pt-4 border-t border-stone-100 text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 text-left">Palate & Structure</label>{STRUCTURE_CONFIG.map(s => (<div key={s.id} className="space-y-2 text-left"><div className="flex justify-between text-[10px] font-bold"><span className="text-stone-400 uppercase">{s.label}</span><span className="text-[#2383E2]">{s.levels[currentWine.structure?.[s.id] || 0]}</span></div><div className="flex gap-1 bg-stone-50 p-1 rounded-xl text-left">{s.levels.map((level, idx) => (<button key={level} onClick={() => setCurrentWine({...currentWine, structure: {...currentWine.structure, [s.id]: idx}})} className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${currentWine.structure?.[s.id] === idx ? 'bg-white text-[#37352F] shadow-sm' : 'text-stone-300'}`}>{idx + 1}</button>))}</div></div>))}</div>
                                     
                                     <div className="space-y-3 pt-4 border-t border-stone-100 text-left"><label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1 text-left">Note</label><textarea className="notion-input h-32 resize-none text-base" value={currentWine.comment} onChange={e => setCurrentWine({...currentWine, comment: e.target.value})} placeholder="Experience..." /></div>
-                                    <div className="space-y-4 pt-4 text-left"><div className="flex justify-between items-center px-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Star Rating</span><span className="text-xl font-bold text-[#37352F]">{currentWine.rating}/10</span></div><div className="flex gap-1.5 text-left text-left">{[...Array(10)].map((_, i) => <button key={i} onClick={() => setCurrentWine({...currentWine, rating: i+1})} className={`flex-1 h-10 rounded-lg transition-all ${currentWine.rating >= i+1 ? 'bg-[#37352F]' : 'bg-stone-100'} active:scale-90`} />)}</div></div>
+                                    <div className="space-y-4 pt-4 text-left"><div className="flex justify-between items-center px-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Star Rating</span><span className="text-xl font-bold text-[#37352F]">{currentWine.rating}/10</span></div><div className="flex gap-1.5 text-left">{[...Array(10)].map((_, i) => <button key={i} onClick={() => setCurrentWine({...currentWine, rating: i+1})} className={`flex-1 h-10 rounded-lg transition-all ${currentWine.rating >= i+1 ? 'bg-[#37352F]' : 'bg-stone-100'} active:scale-90`} />)}</div></div>
                                     <button onClick={handleSave} className="w-full py-6 bg-[#37352F] text-white rounded-2xl font-bold text-xl active:bg-black transition-colors shadow-xl">Archive Record</button>
-                                    <button onClick={() => setView('dashboard')} className="w-full py-4 text-stone-300 text-xs font-bold uppercase tracking-widest text-center">Cancel</button>
+                                    <button onClick={() => setView('dashboard')} className="w-full py-4 text-stone-300 text-xs font-bold uppercase tracking-widest text-center">Cancel Recording</button>
                                 </div>
                             </div>
                         )}
@@ -433,15 +433,19 @@
                     {/* ✨ 하단 정보 투과 방지 가림막 */}
                     <div className="bottom-nav-mask"></div>
 
-                    {/* ✨ 하단 네비게이션 바 (FIXED LAYOUT) */}
+                    {/* ✨ 하단 네비게이션 바 (FIXED & FITTED LAYOUT) */}
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 w-full flex justify-center">
-                        <div className="bg-white/95 backdrop-blur-md border border-stone-200 px-8 py-4 rounded-full flex items-center gap-14 shadow-[0_20px_40px_rgba(0,0,0,0.15)]">
-                            <button onClick={() => setView('dashboard')} className="active:opacity-50 transition-opacity"><Icon3D name="home" size={32} /></button>
-                            <button onClick={() => setView('list')} className="active:opacity-50 transition-opacity"><Icon3D name="archive" size={32} /></button>
+                        <div className="bg-white/95 backdrop-blur-md border border-stone-200 px-8 py-4 rounded-full flex items-center gap-14 shadow-[0_20px_40px_rgba(0,0,0,0.15)] overflow-hidden">
+                            <button onClick={() => setView('dashboard')} className="active:opacity-50 transition-opacity p-1">
+                                <Icon3D name="home" size={32} />
+                            </button>
+                            <button onClick={() => setView('list')} className="active:opacity-50 transition-opacity p-1">
+                                <Icon3D name="archive" size={32} />
+                            </button>
                             <div className="w-[1px] h-6 bg-stone-200" />
                             <button 
                                 onClick={() => { setCurrentWine({ name: '', producer: '', vintage: '', variety: '', region: '', type: 'Red', color: '', aromas: [], structure: { sweetness: 0, acidity: 0, tannin: 0, body: 0, finish: 0 }, date: new Date().toISOString().split('T')[0], rating: 5, comment: '', imageUrl: null }); setView('edit'); }} 
-                                className="active:opacity-50 transition-opacity"
+                                className="active:opacity-50 transition-opacity p-1"
                             >
                                 <Icon3D name="add" size={32} />
                             </button>
