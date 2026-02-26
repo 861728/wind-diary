@@ -91,6 +91,10 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
 
+        // --- Configuration ---
+        const apiKey = ""; // Runtime provides the key automatically
+        const modelName = "gemini-2.5-flash-preview-09-2025";
+
         const WINE_TYPES = ["Red", "White", "Rose", "Sparkling"];
         const COLOR_MAP = {
             "White": ["Lemon", "Gold", "Amber"],
@@ -126,10 +130,6 @@
         };
 
         const App = () => {
-            const [apiKey, setApiKey] = useState(localStorage.getItem('WINE_DIARY_GEMINI_KEY') || '');
-            const [showKeyModal, setShowKeyModal] = useState(!localStorage.getItem('WINE_DIARY_GEMINI_KEY'));
-            const [tempKey, setTempKey] = useState('');
-
             const [wines, setWines] = useState([]);
             const [view, setView] = useState('dashboard');
             const [currentWine, setCurrentWine] = useState(null);
@@ -150,23 +150,42 @@
                 if (!isLoading) localStorage.setItem('WINE_DIARY_STORAGE_FINAL', JSON.stringify(wines));
             }, [wines, isLoading]);
 
-            // --- Paste from Clipboard Logic ---
-            const handlePasteKey = async () => {
-                try {
-                    const text = await navigator.clipboard.readText();
-                    setTempKey(text);
-                } catch (err) {
-                    alert("Unable to access clipboard. Please long-press and paste manually.");
+            // --- Robust Fetch Logic ---
+            const fetchWithRetry = async (url, options, maxRetries = 5) => {
+                let delay = 1000;
+                for (let i = 0; i <= maxRetries; i++) {
+                    try {
+                        const response = await fetch(url, options);
+                        if (response.ok) return response;
+                        if (i === maxRetries) throw new Error(`API returned status ${response.status}`);
+                    } catch (err) {
+                        if (i === maxRetries) throw err;
+                    }
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
                 }
             };
 
             const fetchGemini = async (prompt, isImage = false, base64 = null) => {
-                if (!apiKey) { setShowKeyModal(true); return; }
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+                
+                // Constructing content with proper role as per mandatory instructions
                 const payload = {
-                    contents: [{ parts: [{ text: prompt }, ...(isImage ? [{ inlineData: { mimeType: "image/jpeg", data: base64.split(',')[1] } }] : [])] }]
+                    contents: [{ 
+                        role: "user",
+                        parts: [
+                            { text: prompt }, 
+                            ...(isImage ? [{ inlineData: { mimeType: "image/jpeg", data: base64.split(',')[1] } }] : [])
+                        ] 
+                    }]
                 };
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                
+                const response = await fetchWithRetry(url, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+                
                 const result = await response.json();
                 if (result.error) throw new Error(result.error.message);
                 return result.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
@@ -199,21 +218,21 @@
                 e.target.value = null;
             };
 
-            const handleSaveKey = () => {
-                if (tempKey.trim()) {
-                    localStorage.setItem('WINE_DIARY_GEMINI_KEY', tempKey.trim());
-                    setApiKey(tempKey.trim());
-                    setShowKeyModal(false);
-                }
-            };
-
             const handleScan = async (base64) => {
                 setIsScanning(true);
                 try {
-                    const text = await fetchGemini("Identify wine label. Provide JSON only: {name, producer, vintage, variety, region}. English values.", true, base64);
-                    const data = JSON.parse(text.replace(/```json|```/g, "").trim());
+                    const text = await fetchGemini("Identify wine label. Return JSON only: {name, producer, vintage, variety, region}. Use English values.", true, base64);
+                    
+                    // Safe JSON extraction from AI response (handles Markdown backticks)
+                    const jsonMatch = text.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("AI response was not in JSON format.");
+                    
+                    const data = JSON.parse(jsonMatch[0]);
                     setCurrentWine(prev => ({ ...prev, ...data, imageUrl: base64 }));
-                } catch (e) { alert("Label scan failed."); } finally { setIsScanning(false); }
+                } catch (e) { 
+                    console.error("Scan Error:", e);
+                    alert("Label scan failed. This might be due to API availability or model name issues in this environment."); 
+                } finally { setIsScanning(false); }
             };
 
             const handleSave = () => {
@@ -227,26 +246,6 @@
 
             return (
                 <div className="min-h-screen bg-white text-[#37352F]">
-                    {/* --- API Key Setup Modal --- */}
-                    {showKeyModal && (
-                        <div className="modal-overlay">
-                            <div className="w-full max-w-sm p-8 notion-block bg-white shadow-2xl space-y-6">
-                                <div className="flex flex-col items-center gap-3">
-                                    <Icon3D name="key" size={48} />
-                                    <h2 className="text-xl font-bold">API Key Setup</h2>
-                                    <p className="text-center text-[11px] text-stone-400 px-2 leading-relaxed font-medium">Use the button below if pasting doesn't work.</p>
-                                </div>
-                                <div className="space-y-3">
-                                    <input className="notion-input" type="text" placeholder="Enter or paste your key..." value={tempKey} onChange={(e) => setTempKey(e.target.value)} />
-                                    <button onClick={handlePasteKey} className="w-full py-3 bg-blue-50 text-[#2383E2] rounded-xl font-bold text-xs flex items-center justify-center gap-2 active:bg-blue-100 transition-colors">
-                                        <Icon3D name="upload" size={14} /> Paste from Clipboard
-                                    </button>
-                                </div>
-                                <button onClick={handleSaveKey} className="w-full py-4 bg-[#37352F] text-white rounded-xl font-bold active:scale-95 transition-all">Get Started</button>
-                            </div>
-                        </div>
-                    )}
-
                     <main className="max-w-md mx-auto px-6 pt-16 pb-48">
                         {/* --- Dashboard --- */}
                         {view === 'dashboard' && (
@@ -271,14 +270,14 @@
                                 </div>
 
                                 <div className="flex items-center justify-between pt-10 border-t border-stone-100 px-1">
-                                    <h3 className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Settings</h3>
+                                    <h3 className="text-[10px] font-black text-stone-300 uppercase tracking-widest">Storage</h3>
                                     <div className="flex items-center gap-4">
-                                        <button onClick={() => setShowKeyModal(true)} className="text-[10px] font-bold text-[#2383E2] flex items-center gap-1 uppercase"><Icon3D name="key" size={14}/> Key</button>
                                         <button onClick={handleBackupExport} className="text-[10px] font-bold text-stone-400 flex items-center gap-1 uppercase"><Icon3D name="download" size={14}/> Backup</button>
                                         <button onClick={() => backupFileRef.current.click()} className="text-[10px] font-bold text-stone-400 flex items-center gap-1 uppercase"><Icon3D name="upload" size={14}/> Restore</button>
                                         <input type="file" ref={backupFileRef} className="hidden" accept=".json" onChange={handleBackupImport} />
                                     </div>
                                 </div>
+                                <div className="text-center -mt-8"><span className="text-[9px] font-bold text-stone-200 tracking-tighter uppercase">Ver 1.1.0 Endpoint Fix</span></div>
                             </div>
                         )}
 
